@@ -1,0 +1,43 @@
+# SQL Server 2022 — Parameter Sniffing Lab (local Docker only)
+# Host local SQL instances are untouched; published port is localhost-only.
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver-parameter-sniffing-lab
+    restart: unless-stopped
+    ports:
+      # 1433 yerel SQL veya başka bir lab tarafından kullanılıyorsa .env içinde MSSQL_HOST_PORT değiştirin.
+      - "127.0.0.1:${MSSQL_HOST_PORT:-14335}:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+    env_file:
+      - .env
+    volumes:
+      - mssql_data:/var/opt/mssql
+      - ./database:/lab/database:ro
+      - ./labs:/lab/labs:ro
+      - ./docker:/lab-scripts:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    mem_limit: 2g
+    mem_reservation: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  mssql_data:
+    name: sqlserver-parameter-sniffing-lab-data
